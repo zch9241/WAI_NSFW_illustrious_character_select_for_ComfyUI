@@ -22,9 +22,9 @@
 
 *   `model`: 要应用 LoRA 的模型。
 *   `clip`: 用于文本编码的 CLIP 模型。
+*   `seed`: 用于随机选择角色和动作的种子（仅在`character`或`action`设置为`random`时有效）
 *   `character`: 用于选择角色的下拉菜单。
 *   `action`: 用于选择动作的下拉菜单。
-*   `prompt_weight`: 用于调整生成提示词权重的滑块。
 *   `add_nsfw` (布尔值): 切换是否添加 NSFW 提示词。
 *   `add_details` (布尔值) & `add_details_lora_weight` (浮点数): 加载 `add-detail-xl.safetensors` LoRA。
 *   `enhance_body` (布尔值) & `enhance_body_lora_weight` (浮点数): 加载 `ChihunHentai_20230709225610-000004.safetensors` LoRA。
@@ -73,7 +73,7 @@
 
 ## 注意事项
 
-*   本扩展暂时没有实现原扩展中的 AI 补充提示词和随机选择角色/动作的功能。
+*   本扩展暂时没有实现原扩展中的 AI 补充提示词的功能。
 *   **警告** : 原作者声明的 LoRA 依赖 `add-detail-xl.safetensors`(基于SDXL 0.9) 和 `ChihunHentai_20230709225610-000004.safetensors`(基于SD 1.5)，可能并非与模型 `WAI-NSFW-illustrious-SDXL` 兼容，在执行时控制台会输出错误信息
 
 ## 推荐工作流

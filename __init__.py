@@ -2,6 +2,7 @@
 # 
 
 from PIL import Image
+import random
 
 from nodes import LoraLoader
 
@@ -26,13 +27,18 @@ try:
     
     # 角色名
     character_names = list(characters.keys())
+    
+    # 随机
+    action_names_with_random = ["random"] + action_names
+    character_names_with_random = ["random"] + character_names
 
 
 except Exception as e:
     print(f"[CharacterSelector] Error loading data: {e}")
     character_names =["Error loading data"]
     action_names = ["Error loading data"]
-
+    character_names_with_random = ["random", "Error loading data"]
+    action_names_with_random = ["random", "Error loading data"]
 
 # 定义节点类
 class PromptAndLoraLoader:
@@ -45,9 +51,9 @@ class PromptAndLoraLoader:
             "required": {
                 "model": ("MODEL", ),
                 "clip": ("CLIP", ),
-                "character": (character_names, ),
-                "action": (action_names, ),
-                "prompt_weight": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "character": (character_names_with_random, ),
+                "action": (action_names_with_random, ),
                 "add_nsfw": ("BOOLEAN", {"default": True}),
                 "add_details": ("BOOLEAN", {"default": False}),
                 "add_details_lora_weight": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
@@ -69,18 +75,34 @@ class PromptAndLoraLoader:
     FUNCTION = "build_workflow"
     CATEGORY = "WAI Character Selector"
     
-    def build_workflow(self, model, clip, character, action, prompt_weight, add_nsfw, 
+    def build_workflow(self, model, clip, seed, character, action, add_nsfw, 
                        add_details, add_details_lora_weight,
                        enhance_body, enhance_body_lora_weight,
                        enhance_quality, enhance_quality_lora_weight,
                        enhance_character, enhance_character_lora_weight,
                        positive_conditioning_in=None, negative_conditioning_in=None):
-        
+        # 随机功能
+        rng = random.Random(seed)
+        if character == "random":
+            selected_character = rng.choice(character_names)
+        else:
+            selected_character = character
+            
+        if action == "random":
+            selected_action = rng.choice(action_names)
+        else:
+            selected_action = action
+
+        if character == "random" or action == "random":
+            print(f"[PromptAndLoraLoader] Seed: {seed}, Selected Character: {selected_character}, Selected Action: {selected_action}")
+        else:
+            print(f"[PromptAndLoraLoader] Selected Character: {selected_character}, Selected Action: {selected_action}")
+
         # 动态加载lora
         lora_loader = LoraLoader()
         
         if add_details:
-            model, clip =  lora_loader.load_lora(
+            model, clip = lora_loader.load_lora(
                 model, clip, "add-detail-xl.safetensors", add_details_lora_weight, add_details_lora_weight
             )
             print("[PromptAndLoraLoader] Loaded add-detail-xl lora with weight:", add_details_lora_weight)
@@ -105,10 +127,10 @@ class PromptAndLoraLoader:
         pos_prompt_parts = []
         
         pos_prompt_parts.append(settings["pos_prompt"])
-        if character in character_names:
-            pos_prompt_parts.append(characters[character])
-        if action in action_names:
-            pos_prompt_parts.append(actions[action])
+        if selected_character in character_names:
+            pos_prompt_parts.append(characters[selected_character])
+        if selected_action in action_names:
+            pos_prompt_parts.append(actions[selected_action])
         if add_nsfw:
             pos_prompt_parts.append(settings["nsfw"])
         if enhance_body:
@@ -119,21 +141,15 @@ class PromptAndLoraLoader:
         pos_prompt = ", ".join(part for part in pos_prompt_parts if part)
 
         neg_prompt = settings["neg_prompt"]
+        
+        print(f"[PromptAndLoraLoader] Positive Prompt: {pos_prompt}")
+        print(f"[PromptAndLoraLoader] Negative Prompt: {neg_prompt}")
 
-        if prompt_weight != 1.0:
-            final_pos_prompt = f"({pos_prompt}:{prompt_weight})"
-            final_neg_prompt = f"({neg_prompt}:{prompt_weight})"
-        else:
-            final_pos_prompt = pos_prompt
-            final_neg_prompt = neg_prompt
-        #print(f"[PromptAndLoraLoader] Final positive prompt: {final_pos_prompt}")
-        #print(f"[PromptAndLoraLoader] Final negative prompt: {final_neg_prompt}")
-        
-        
-        pos_tokens = clip.tokenize(final_pos_prompt)
+        # 解析
+        pos_tokens = clip.tokenize(pos_prompt)
         pos_cond, pos_pooled = clip.encode_from_tokens(pos_tokens, return_pooled=True)
         pos_conditioning = [[pos_cond, {"pooled_output": pos_pooled}]]
-        neg_tokens = clip.tokenize(final_neg_prompt)
+        neg_tokens = clip.tokenize(neg_prompt)
         neg_cond, neg_pooled = clip.encode_from_tokens(neg_tokens, return_pooled=True)
         neg_conditioning = [[neg_cond, {"pooled_output": neg_pooled}]]
 
@@ -147,9 +163,9 @@ class PromptAndLoraLoader:
             final_neg_conditioning = negative_conditioning_in + neg_conditioning
         else:
             final_neg_conditioning = neg_conditioning
-        
-        
-        return (model, clip, final_pos_conditioning, final_neg_conditioning, character)
+
+        return (model, clip, final_pos_conditioning, final_neg_conditioning, selected_character)
+
 
 
 class CharacterImagePreviewer:
@@ -157,7 +173,7 @@ class CharacterImagePreviewer:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "character": ("STRING",)
+                "character": ("STRING", {"forceInput": True})
             }
         }
     RETURN_TYPES = ("IMAGE",)
