@@ -55,7 +55,7 @@ class PromptAndLoraLoader:
                 "character": (character_names_with_random, ),
                 "action": (action_names_with_random, ),
                 "add_nsfw": ("BOOLEAN", {"default": True}),
-                "add_details": ("BOOLEAN", {"default": False}),
+                "add_details": ("BOOLEAN", {"default": True}),
                 "add_details_lora_weight": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
                 "enhance_body": ("BOOLEAN", {"default": False}),
                 "enhance_body_lora_weight": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),

@@ -74,7 +74,7 @@
 ## 注意事项
 
 *   本扩展暂时没有实现原扩展中的 AI 补充提示词的功能。
-*   **警告** : 原作者声明的 LoRA 依赖 `add-detail-xl.safetensors`(基于SDXL 0.9) 和 `ChihunHentai_20230709225610-000004.safetensors`(基于SD 1.5)，可能并非与模型 `WAI-NSFW-illustrious-SDXL` 兼容，在执行时控制台会输出错误信息
+*   **警告** : 原作者声明的 LoRA 依赖 `ChihunHentai_20230709225610-000004.safetensors`(基于SD 1.5)，可能并非与模型 `WAI-NSFW-illustrious-SDXL` 兼容，在执行时控制台会输出错误信息
 
 ## 推荐工作流
 
