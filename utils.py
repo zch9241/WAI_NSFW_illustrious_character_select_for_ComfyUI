@@ -1,3 +1,6 @@
+# Author: zch9241[zch2426936965@gmail.com]
+# 
+
 import json
 import os
 import base64
@@ -5,6 +8,9 @@ import io
 from PIL import Image
 import numpy as np
 import torch
+
+import folder_paths
+from nodes import LoraLoader
 
 # 获取扩展的基础目录
 BASEDIR = os.path.dirname(os.path.abspath(__file__))

@@ -1,6 +1,11 @@
-from . import utils
+# Author: zch9241[zch2426936965@gmail.com]
+# 
+
 from PIL import Image
 
+from nodes import LoraLoader
+
+from . import utils
 
 
 # 加载配置文件
@@ -30,58 +35,121 @@ except Exception as e:
 
 
 # 定义节点类
-class CharacterPromptBuilder:
+class PromptAndLoraLoader:
+    """
+    加载lora, 构造提示词
+    """
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "model": ("MODEL", ),
+                "clip": ("CLIP", ),
                 "character": (character_names, ),
                 "action": (action_names, ),
+                "prompt_weight": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
                 "add_nsfw": ("BOOLEAN", {"default": True}),
-                "add_details": ("BOOLEAN", {"default": True}),
-                "enhance_body": ("BOOLEAN", {"default": True}),
+                "add_details": ("BOOLEAN", {"default": False}),
+                "add_details_lora_weight": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
+                "enhance_body": ("BOOLEAN", {"default": False}),
+                "enhance_body_lora_weight": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 10.0, "step": 0.01}),
                 "enhance_quality": ("BOOLEAN", {"default": True}),
+                "enhance_quality_lora_weight": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 10.0, "step": 0.01}),
                 "enhance_character": ("BOOLEAN", {"default": True}),
+                "enhance_character_lora_weight": ("FLOAT", {"default": 0.8, "min": 0.0, "max": 10.0, "step": 0.01}),
+            },
+            "optional":{
+                 "positive_conditioning_in": ("CONDITIONING", ),
+                 "negative_conditioning_in": ("CONDITIONING", ),
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING")
-    RETURN_NAMES = ("positive_prompt", "negative_prompt", "character_name")
-    FUNCTION = "build_prompt"
-    CATEGORY = "Character Selector"
+    RETURN_TYPES = ("MODEL", "CLIP", "CONDITIONING", "CONDITIONING", "STRING")
+    RETURN_NAMES = ("model", "clip", "positive_cond", "negative_cond", "character_name")
+    FUNCTION = "build_workflow"
+    CATEGORY = "WAI Character Selector"
     
-    def build_prompt(self, character, action, add_nsfw, add_details, enhance_body, enhance_quality, enhance_character):
-        """根据选择的角色和动作构建正向和负向提示词。"""
+    def build_workflow(self, model, clip, character, action, prompt_weight, add_nsfw, 
+                       add_details, add_details_lora_weight,
+                       enhance_body, enhance_body_lora_weight,
+                       enhance_quality, enhance_quality_lora_weight,
+                       enhance_character, enhance_character_lora_weight,
+                       positive_conditioning_in=None, negative_conditioning_in=None):
         
-        prompt_parts = []
+        # 动态加载lora
+        lora_loader = LoraLoader()
         
-        prompt_parts.append(settings["pos_prompt"])  # 添加默认的正向提示词
-
-        # 添加角色和动作提示词
-        if character in character_names:
-            prompt_parts.append(characters[character])
-        
-        if action in action_names:
-            prompt_parts.append(actions[action])
-            
-        # 根据复选框添加增强提示词
-        if add_nsfw:
-            prompt_parts.append(settings["nsfw"])
         if add_details:
-            prompt_parts.append(settings["more_detail"])
+            model, clip =  lora_loader.load_lora(
+                model, clip, "add-detail-xl.safetensors", add_details_lora_weight, add_details_lora_weight
+            )
+            print("[PromptAndLoraLoader] Loaded add-detail-xl lora with weight:", add_details_lora_weight)
         if enhance_body:
-            prompt_parts.append(settings["chihunhentai"])
+            model, clip = lora_loader.load_lora(
+                model, clip, "ChihunHentai_20230709225610-000004.safetensors", enhance_body_lora_weight, enhance_body_lora_weight
+            )
+            print("[PromptAndLoraLoader] Loaded ChihunHentai lora with weight:", enhance_body_lora_weight)
         if enhance_quality:
-            prompt_parts.append(settings["quality"])
+            model, clip = lora_loader.load_lora(
+                model, clip, "spo_sdxl_10ep_4k-data_lora_webui.safetensors", enhance_quality_lora_weight, enhance_quality_lora_weight
+            )
+            print("[PromptAndLoraLoader] Loaded spo_sdxl_10ep_4k-data_lora_webui lora with weight:", enhance_quality_lora_weight)
         if enhance_character:
-            prompt_parts.append(settings["character_enhance"])
+            model, clip = lora_loader.load_lora(
+                model, clip, "ponyv4_noob1_2_adamW-000017.safetensors", enhance_character_lora_weight, enhance_character_lora_weight
+            )
+            print("[PromptAndLoraLoader] Loaded ponyv4_noob1_2_adamW-000017 lora with weight:", enhance_character_lora_weight)
+        
+        
+        # 构建提示词
+        pos_prompt_parts = []
+        
+        pos_prompt_parts.append(settings["pos_prompt"])
+        if character in character_names:
+            pos_prompt_parts.append(characters[character])
+        if action in action_names:
+            pos_prompt_parts.append(actions[action])
+        if add_nsfw:
+            pos_prompt_parts.append(settings["nsfw"])
+        if enhance_body:
+            pos_prompt_parts.append(settings["chihunhentai"])
+        if enhance_quality:
+            pos_prompt_parts.append(settings["quality"])
 
-        # 使用 .strip(',') 清理可能多余的逗号
-        final_pos_prompt = ", ".join(p.strip().strip(',') for p in prompt_parts if p)
+        pos_prompt = ", ".join(part for part in pos_prompt_parts if part)
 
         neg_prompt = settings["neg_prompt"]
 
-        return (final_pos_prompt, neg_prompt, character)
+        if prompt_weight != 1.0:
+            final_pos_prompt = f"({pos_prompt}:{prompt_weight})"
+            final_neg_prompt = f"({neg_prompt}:{prompt_weight})"
+        else:
+            final_pos_prompt = pos_prompt
+            final_neg_prompt = neg_prompt
+        #print(f"[PromptAndLoraLoader] Final positive prompt: {final_pos_prompt}")
+        #print(f"[PromptAndLoraLoader] Final negative prompt: {final_neg_prompt}")
+        
+        
+        pos_tokens = clip.tokenize(final_pos_prompt)
+        pos_cond, pos_pooled = clip.encode_from_tokens(pos_tokens, return_pooled=True)
+        pos_conditioning = [[pos_cond, {"pooled_output": pos_pooled}]]
+        neg_tokens = clip.tokenize(final_neg_prompt)
+        neg_cond, neg_pooled = clip.encode_from_tokens(neg_tokens, return_pooled=True)
+        neg_conditioning = [[neg_cond, {"pooled_output": neg_pooled}]]
+
+        
+        # 如果有上游的 conditioning，合并它们
+        if positive_conditioning_in is not None:
+            final_pos_conditioning = positive_conditioning_in + pos_conditioning
+        else:
+            final_pos_conditioning = pos_conditioning
+        if negative_conditioning_in is not None:
+            final_neg_conditioning = negative_conditioning_in + neg_conditioning
+        else:
+            final_neg_conditioning = neg_conditioning
+        
+        
+        return (model, clip, final_pos_conditioning, final_neg_conditioning, character)
 
 
 class CharacterImagePreviewer:
@@ -95,7 +163,7 @@ class CharacterImagePreviewer:
     RETURN_TYPES = ("IMAGE",)
     RETURN_NAMES = ("character_image",)
     FUNCTION = "get_character_image"
-    CATEGORY = "Character Selector"
+    CATEGORY = "WAI Character Selector"
     
     def get_character_image(self, character):
         """根据角色名称获取对应的预览图像。"""
@@ -124,14 +192,13 @@ class TextConcatenate:
                 "text_b": ("STRING", {"multiline": True, "default": ""}),
             },
             "optional": {
-                # 增加一个分隔符选项，更灵活
                 "separator": ("STRING", {"default": ", "})
             }
         }
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "concatenate"
-    CATEGORY = "Character Selector"
+    CATEGORY = "WAI Character Selector"
 
     def concatenate(self, text_a, text_b, separator=", "):
         # 过滤掉空的输入，避免产生多余的分隔符
@@ -140,78 +207,16 @@ class TextConcatenate:
         return (result,)
 
 
-class EncodeAndCombineConditioning:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "clip": ("CLIP", ),
-                # 接收来自 CharacterPromptBuilder 或其他文本生成节点的字符串
-                "text": ("STRING", {"multiline": True}),
-                # 权重滑块，用于控制这个新编码文本的强度
-                "weight": ("FLOAT", {"default": 1.0, "min": -10.0, "max": 10.0, "step": 0.01}),
-            },
-            "optional": {
-                # 接收上游的 conditioning
-                "conditioning_in": ("CONDITIONING",)
-            }
-        }
-
-    RETURN_TYPES = ("CONDITIONING",)
-    FUNCTION = "encode_and_combine"
-    CATEGORY = "Character Selector"
-
-    def encode_and_combine(self, clip, text, weight, conditioning_in=None):
-        # 处理输入文本
-        # 如果输入的文本是空的，我们不应该生成新的 conditioning
-        if not text or not text.strip():
-            # 如果有上游 conditioning，直接返回它
-            if conditioning_in is not None:
-                return (conditioning_in,)
-            # 如果没有上游，也没有文本，返回一个空的 conditioning
-            else:
-                # 这种情况下，我们需要创建一个“空”的 conditioning 以避免工作流中断
-                empty_tokens = clip.tokenize("")
-                cond, pooled = clip.encode_from_tokens(empty_tokens, return_pooled=True)
-                return ([[cond, {"pooled_output": pooled}]], )
-
-        # 使用 CLIP 对文本进行编码，并应用权重
-        tokens = clip.tokenize(text)
-
-        # 应用权重
-        if weight != 1.0:
-            # 遍历 token 结构并乘以权重
-            # (token_id, weight) -> (token_id, weight * user_weight)
-            for i in range(len(tokens)):
-                for j in range(len(tokens[i])):
-                    if tokens[i][j][0] != 0: # 避免修改特殊 token
-                        tokens[i][j] = (tokens[i][j][0], tokens[i][j][1] * weight)
-
-        cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
-        new_conditioning = [[cond, {"pooled_output": pooled}]]
-
-        # 合并 Conditioning
-        if conditioning_in is not None:
-            # 将上游的 conditioning 和新创建的 conditioning 合并
-            final_conditioning = conditioning_in + new_conditioning
-            return (final_conditioning, )
-        else:
-            # 如果没有上游输入，则直接返回新创建的
-            return (new_conditioning, )
-
-
 # 注册节点
 NODE_CLASS_MAPPINGS = {
-    "CharacterPromptBuilder": CharacterPromptBuilder,
+    "PromptAndLoraLoader": PromptAndLoraLoader,
     "CharacterImagePreviewer": CharacterImagePreviewer,
     "TextConcatenate": TextConcatenate,
-    "EncodeAndCombineConditioning": EncodeAndCombineConditioning,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "CharacterPromptBuilder": "(WAI)角色提示词生成器",
+    "PromptAndLoraLoader": "(WAI)角色提示词生成器",
     "CharacterImagePreviewer": "(WAI)角色图片预览",
     "TextConcatenate": "文本连接器",
-    "EncodeAndCombineConditioning": "(WAI)编码并合并条件",
 }
 
 print("[WAI_NSFW_illustrious_character_select_for_ComfyUI] Node loaded successfully.")
