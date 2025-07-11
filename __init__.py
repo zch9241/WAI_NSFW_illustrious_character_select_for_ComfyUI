@@ -1,9 +1,15 @@
 # Author: zch9241[zch2426936965@gmail.com]
 # 
 
-from PIL import Image
+import os
 import random
+import time
 
+import numpy as np
+from PIL import Image
+
+
+import folder_paths
 from nodes import LoraLoader
 
 from . import utils
@@ -45,8 +51,13 @@ class PromptAndLoraLoader:
     """
     加载lora, 构造提示词
     """
+    
+    def __init__(self):
+        self.output_dir = folder_paths.get_temp_directory()
+        self.type = "temp"
+    
     @classmethod
-    def INPUT_TYPES(cls):
+    def INPUT_TYPES(s):
         return {
             "required": {
                 "model": ("MODEL", ),
@@ -70,10 +81,11 @@ class PromptAndLoraLoader:
             }
         }
 
-    RETURN_TYPES = ("MODEL", "CLIP", "CONDITIONING", "CONDITIONING", "STRING")
-    RETURN_NAMES = ("model", "clip", "positive_cond", "negative_cond", "character_name")
+    RETURN_TYPES = ("MODEL", "CLIP", "CONDITIONING", "CONDITIONING")
+    RETURN_NAMES = ("model", "clip", "positive_cond", "negative_cond")
     FUNCTION = "build_workflow"
     CATEGORY = "WAI Character Selector"
+    OUTPUT_NODE = True
     
     def build_workflow(self, model, clip, seed, character, action, add_nsfw, 
                        add_details, add_details_lora_weight,
@@ -167,26 +179,8 @@ class PromptAndLoraLoader:
             final_neg_conditioning = negative_conditioning_in + neg_conditioning
         else:
             final_neg_conditioning = neg_conditioning
-
-        return (model, clip, final_pos_conditioning, final_neg_conditioning, selected_character)
-
-
-
-class CharacterImagePreviewer:
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "character": ("STRING", {"forceInput": True})
-            }
-        }
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("character_image",)
-    FUNCTION = "get_character_image"
-    CATEGORY = "WAI Character Selector"
-    
-    def get_character_image(self, character):
-        """根据角色名称获取对应的预览图像。"""
+        
+        # 在节点内显示选择的角色图像
         if character in character_names:
             character_prompt = characters[character]
             for character_image in character_images:
@@ -194,13 +188,22 @@ class CharacterImagePreviewer:
                     character_image_data = character_image[character_prompt]
                     break
             pil_image = utils.base64_to_pil(character_image_data)
-            tensor_image = utils.pil_to_tensor(pil_image)
-            return (tensor_image, )
         else:
-            # 如果找不到图像，返回一个黑色的空图像，避免工作流中断
-            print(f"[CharacterImagePreviewer] No image found for character: {character}. Returning a black image.")
-            black_image = Image.new('RGB', (64, 64), 'black')
-            return (utils.pil_to_tensor(black_image),)
+            print(f"[PromptAndLoraLoader] No image found for character: {character}. Returning a black image.")
+            pil_image = Image.new('RGB', (64, 64), 'black')
+
+        file_prefix = f"character_{time.time()}_{np.random.randint(1000)}"
+        file_path = os.path.join(self.output_dir, f"{file_prefix}.png")
+        pil_image.save(file_path, "PNG")
+        
+        return_image = [{
+            "filename": os.path.basename(file_path),
+            "subfolder": "",
+            "type": self.type
+        }]
+        
+        return {"ui": {"images": return_image}, "result": (model, clip, final_pos_conditioning, final_neg_conditioning)}
+
 
 
 class TextConcatenate:
@@ -230,12 +233,10 @@ class TextConcatenate:
 # 注册节点
 NODE_CLASS_MAPPINGS = {
     "PromptAndLoraLoader": PromptAndLoraLoader,
-    "CharacterImagePreviewer": CharacterImagePreviewer,
     "TextConcatenate": TextConcatenate,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptAndLoraLoader": "(WAI)角色提示词生成器",
-    "CharacterImagePreviewer": "(WAI)角色图片预览",
     "TextConcatenate": "文本连接器",
 }
 
