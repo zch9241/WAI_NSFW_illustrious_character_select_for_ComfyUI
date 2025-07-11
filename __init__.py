@@ -34,7 +34,7 @@ try:
 
 
 except Exception as e:
-    print(f"[CharacterSelector] Error loading data: {e}")
+    print(f"[WAI_NSFW_illustrious_character_select_for_ComfyUI] Error loading data: {e}")
     character_names =["Error loading data"]
     action_names = ["Error loading data"]
     character_names_with_random = ["random", "Error loading data"]
@@ -102,25 +102,29 @@ class PromptAndLoraLoader:
         lora_loader = LoraLoader()
         
         if add_details:
+            lora_name = "add-detail-xl.safetensors"
             model, clip = lora_loader.load_lora(
-                model, clip, "add-detail-xl.safetensors", add_details_lora_weight, add_details_lora_weight
+                model, clip, lora_name, add_details_lora_weight, add_details_lora_weight
             )
-            print("[PromptAndLoraLoader] Loaded add-detail-xl lora with weight:", add_details_lora_weight)
+            print(f"[PromptAndLoraLoader] Loaded {lora_name.strip('.safetensors')} lora with weight: {add_details_lora_weight}")
         if enhance_body:
+            lora_name = "ChihunHentai_20230709225610-000004.safetensors"
             model, clip = lora_loader.load_lora(
-                model, clip, "ChihunHentai_20230709225610-000004.safetensors", enhance_body_lora_weight, enhance_body_lora_weight
+                model, clip, lora_name, enhance_body_lora_weight, enhance_body_lora_weight
             )
-            print("[PromptAndLoraLoader] Loaded ChihunHentai lora with weight:", enhance_body_lora_weight)
+            print(f"[PromptAndLoraLoader] Loaded {lora_name.strip('.safetensors')} lora with weight: {enhance_body_lora_weight}")
         if enhance_quality:
+            lora_name = "spo_sdxl_10ep_4k-data_lora_webui.safetensors"
             model, clip = lora_loader.load_lora(
-                model, clip, "spo_sdxl_10ep_4k-data_lora_webui.safetensors", enhance_quality_lora_weight, enhance_quality_lora_weight
+                model, clip, lora_name, enhance_quality_lora_weight, enhance_quality_lora_weight
             )
-            print("[PromptAndLoraLoader] Loaded spo_sdxl_10ep_4k-data_lora_webui lora with weight:", enhance_quality_lora_weight)
+            print(f"[PromptAndLoraLoader] Loaded {lora_name.strip('.safetensors')} lora with weight: {enhance_quality_lora_weight}")
         if enhance_character:
+            lora_name = "ponyv4_noob1_2_adamW-000017.safetensors"
             model, clip = lora_loader.load_lora(
-                model, clip, "ponyv4_noob1_2_adamW-000017.safetensors", enhance_character_lora_weight, enhance_character_lora_weight
+                model, clip, lora_name, enhance_character_lora_weight, enhance_character_lora_weight
             )
-            print("[PromptAndLoraLoader] Loaded ponyv4_noob1_2_adamW-000017 lora with weight:", enhance_character_lora_weight)
+            print(f"[PromptAndLoraLoader] Loaded {lora_name.strip('.safetensors')} lora with weight: {enhance_character_lora_weight}")
         
         
         # 构建提示词
@@ -138,12 +142,12 @@ class PromptAndLoraLoader:
         if enhance_quality:
             pos_prompt_parts.append(settings["quality"])
 
-        pos_prompt = ", ".join(part for part in pos_prompt_parts if part)
+        pos_prompt = ", ".join(part.strip().strip(",") for part in pos_prompt_parts if part)
 
         neg_prompt = settings["neg_prompt"]
         
-        print(f"[PromptAndLoraLoader] Positive Prompt: {pos_prompt}")
-        print(f"[PromptAndLoraLoader] Negative Prompt: {neg_prompt}")
+        print(f"[PromptAndLoraLoader] Positive Prompt: {pos_prompt}\n")
+        print(f"[PromptAndLoraLoader] Negative Prompt: {neg_prompt}\n")
 
         # 解析
         pos_tokens = clip.tokenize(pos_prompt)
