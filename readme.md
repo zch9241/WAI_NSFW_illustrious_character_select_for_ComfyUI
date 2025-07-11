@@ -39,23 +39,8 @@
 *   `clip`: 加载了所选 LoRA 的 CLIP 模型。
 *   `positive_cond`: 最终的正面 conditioning，可直接连接到 KSampler。
 *   `negative_cond`: 最终的负面 conditioning，可直接连接到 KSampler。
-*   `character_name` (字符串): 所选角色的名称，用于传递给 `(WAI)角色图片预览` 节点。
 
-### 2. (WAI)角色图片预览 (CharacterImagePreviewer)
-
-一个方便的视觉辅助工具，用于查看所选角色的预览图。
-
-**功能**: 根据所选的角色名称，显示对应的预览图。
-
-**输入**:
-
-*   `character` (字符串): 来自 `(WAI)角色提示词生成器` 的 `character_name` 输出的角色名。
-
-**输出**:
-
-*   `character_image` (图像): 图像数据，可以连接到 `Preview Image` 节点进行显示。
-
-### 3. 文本连接器 (TextConcatenate)
+### 2. 文本连接器 (TextConcatenate)
 
 一个用于拼接两个字符串的简单实用节点。
 
