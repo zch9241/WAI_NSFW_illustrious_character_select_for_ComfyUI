@@ -181,15 +181,15 @@ class PromptAndLoraLoader:
             final_neg_conditioning = neg_conditioning
         
         # 在节点内显示选择的角色图像
-        if character in character_names:
-            character_prompt = characters[character]
+        if selected_character in character_names:
+            character_prompt = characters[selected_character]
             for character_image in character_images:
                 if list(character_image.keys()) == [character_prompt]:
                     character_image_data = character_image[character_prompt]
                     break
             pil_image = utils.base64_to_pil(character_image_data)
         else:
-            print(f"[PromptAndLoraLoader] No image found for character: {character}. Returning a black image.")
+            print(f"[PromptAndLoraLoader] No image found for character: {selected_character}. Returning a black image.")
             pil_image = Image.new('RGB', (64, 64), 'black')
 
         file_prefix = f"character_{time.time()}_{np.random.randint(1000)}"
