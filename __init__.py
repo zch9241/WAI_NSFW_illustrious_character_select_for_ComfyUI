@@ -201,8 +201,9 @@ class PromptAndLoraLoader:
             "subfolder": "",
             "type": self.type
         }]
+        text = [f"角色: {selected_character}\n动作: {selected_action}"]
         
-        return {"ui": {"images": return_image}, "result": (model, clip, final_pos_conditioning, final_neg_conditioning)}
+        return {"ui": {"images": return_image, "text": text}, "result": (model, clip, final_pos_conditioning, final_neg_conditioning)}
 
 
 
@@ -239,5 +240,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptAndLoraLoader": "(WAI)角色提示词生成器",
     "TextConcatenate": "文本连接器",
 }
+WEB_DIRECTORY = "./web"
+__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
 
 print("[WAI_NSFW_illustrious_character_select_for_ComfyUI] Node loaded successfully.")
