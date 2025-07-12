@@ -46,7 +46,7 @@ except Exception as e:
     character_names_with_random = ["random", "Error loading data"]
     action_names_with_random = ["random", "Error loading data"]
 
-# 定义节点类
+
 class PromptAndLoraLoader:
     """
     加载lora, 构造提示词
@@ -65,6 +65,7 @@ class PromptAndLoraLoader:
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
                 "character": (character_names_with_random, ),
                 "action": (action_names_with_random, ),
+                "workflow_control": ("BOOLEAN", {"default": False, "label_on": "使用当前配置生成（工作流将继续运行）", "label_off": "预览随机选项（工作流将在工作流控制门节点被终止）"}),
                 "add_nsfw": ("BOOLEAN", {"default": True}),
                 "add_details": ("BOOLEAN", {"default": True}),
                 "add_details_lora_weight": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
@@ -81,13 +82,13 @@ class PromptAndLoraLoader:
             }
         }
 
-    RETURN_TYPES = ("MODEL", "CLIP", "CONDITIONING", "CONDITIONING")
-    RETURN_NAMES = ("model", "clip", "positive_cond", "negative_cond")
+    RETURN_TYPES = ("MODEL", "CLIP", "CONDITIONING", "CONDITIONING", "BOOLEAN")
+    RETURN_NAMES = ("model", "clip", "positive_conditioning", "negative_conditioning", "gate_passthrough")
     FUNCTION = "build_workflow"
     CATEGORY = "WAI Character Selector"
     OUTPUT_NODE = True
     
-    def build_workflow(self, model, clip, seed, character, action, add_nsfw, 
+    def build_workflow(self, model, clip, seed, character, action, workflow_control, add_nsfw, 
                        add_details, add_details_lora_weight,
                        enhance_body, enhance_body_lora_weight,
                        enhance_quality, enhance_quality_lora_weight,
@@ -105,7 +106,8 @@ class PromptAndLoraLoader:
         else:
             selected_action = action
 
-        if character == "random" or action == "random":
+        is_random = character == "random" or action == "random"
+        if is_random:
             print(f"[PromptAndLoraLoader] Seed: {seed}, Selected Character: {selected_character}, Selected Action: {selected_action}")
         else:
             print(f"[PromptAndLoraLoader] Selected Character: {selected_character}, Selected Action: {selected_action}")
@@ -203,8 +205,40 @@ class PromptAndLoraLoader:
         }]
         text = [f"角色: {selected_character}\n动作: {selected_action}"]
         
-        return {"ui": {"images": return_image, "text": text}, "result": (model, clip, final_pos_conditioning, final_neg_conditioning)}
+        ui_payload = {
+            "images": return_image, 
+            "text": text,
+            "selected_character": [selected_character],
+            "selected_action": [selected_action],
+        }
+        # False = 暂停, True = 继续
+        gate_passthrough = workflow_control
+        
+        return {"ui": ui_payload, "result": (model, clip, final_pos_conditioning, final_neg_conditioning, gate_passthrough)}
 
+
+class ConditionalGate:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "gate_input": ("BOOLEAN", {"forceInput": True}),
+                "positive_conditioning": ("CONDITIONING",),
+                "negative_conditioning": ("CONDITIONING",),
+            }
+        }
+    
+    RETURN_TYPES = ("CONDITIONING", "CONDITIONING",)
+    RETURN_NAMES = ("positive_conditioning", "negative_conditioning",)
+    FUNCTION = "gate"
+    CATEGORY = "WAI Character Selector/Utils"
+
+    def gate(self, gate_input, positive_conditioning, negative_conditioning):
+        if not gate_input:
+            print("\033[93m[WAI ConditionalGate] 门已关闭。工作流在此处被有意终止。这不是一个错误。\033[0m")
+            raise Exception("工作流已由'(WAI)流程控制门'终止。")
+        print("\033[92m[WAI ConditionalGate] 门已打开。工作流继续执行。\033[0m")
+        return (positive_conditioning, negative_conditioning)
 
 
 class TextConcatenate:
@@ -222,7 +256,7 @@ class TextConcatenate:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "concatenate"
-    CATEGORY = "WAI Character Selector"
+    CATEGORY = "WAI Character Selector/Utils"
 
     def concatenate(self, text_a, text_b, separator=", "):
         # 过滤掉空的输入，避免产生多余的分隔符
@@ -231,13 +265,14 @@ class TextConcatenate:
         return (result,)
 
 
-# 注册节点
 NODE_CLASS_MAPPINGS = {
     "PromptAndLoraLoader": PromptAndLoraLoader,
+    "ConditionalGate": ConditionalGate,
     "TextConcatenate": TextConcatenate,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptAndLoraLoader": "(WAI)角色提示词生成器",
+    "ConditionalGate": "(WAI)工作流控制门",
     "TextConcatenate": "文本连接器",
 }
 WEB_DIRECTORY = "./web"

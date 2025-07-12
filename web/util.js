@@ -21,6 +21,18 @@ app.registerExtension({
 				this.setDirtyCanvas(true, false); // 强制重绘以应用类名
 			}
 
+			// 记忆存在random选项时的cha/act数据，修改相应控件，以便重新运行工作流时使用
+			if (message.selected_character && message.selected_action) {
+				const characterWidget = this.widgets.find(w => w.name === "character");
+				const actionWidget = this.widgets.find(w => w.name === "action");
+
+				if (characterWidget && characterWidget.value === "random") {
+					characterWidget.value = message.selected_character[0];
+				}
+				if (actionWidget && actionWidget.value === "random") {
+					actionWidget.value = message.selected_action[0];
+				}
+			}
 			// 图片处理
 			this.imgs = []; 
 			if (message.images) {

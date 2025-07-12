@@ -4,6 +4,8 @@
 
 通过本扩展，你可以轻松地从预设的列表中选择角色和动作，自动应用风格化的增强提示词和 LoRA，并通过模块化的节点自由组合，构建出强大而灵活的生成工作流。
 
+~~项目开发不易，请各位用发财的小手点一个免费的star哦~~
+
 ## 安装方式
 
 通过 `绘世启动器` 或 `ComfyUI Manager` 安装即可。
@@ -25,6 +27,7 @@
 *   `seed`: 用于随机选择角色和动作的种子（仅在`character`或`action`设置为`random`时有效）
 *   `character`: 用于选择角色的下拉菜单。
 *   `action`: 用于选择动作的下拉菜单。
+*   `workflow_control`: 用于控制是否继续执行工作流（使用random角色/动作选项时，可以先预览一下随机结果，若满意则可在下次运行）
 *   `add_nsfw` (布尔值): 切换是否添加 NSFW 提示词。
 *   `add_details` (布尔值) & `add_details_lora_weight` (浮点数): 加载 `add-detail-xl.safetensors` LoRA。
 *   `enhance_body` (布尔值) & `enhance_body_lora_weight` (浮点数): 加载 `ChihunHentai_20230709225610-000004.safetensors` LoRA。
@@ -40,11 +43,13 @@
 *   `positive_cond`: 最终的正面 conditioning，可直接连接到 KSampler。
 *   `negative_cond`: 最终的负面 conditioning，可直接连接到 KSampler。
 
-### 2. 文本连接器 (TextConcatenate)
+### 2. (WAI)工作流控制门 (ConditionalGate)
+
+控制是否继续执行工作流的节点（主要搭配random选项）
+
+### 3. 文本连接器 (TextConcatenate)
 
 一个用于拼接两个字符串的简单实用节点。
-
-**功能**: 用一个可选的分隔符连接两个字符串，并忽略空的输入。
 
 **输入**:
 
