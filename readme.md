@@ -45,7 +45,7 @@
 
 ### 2. (WAI)工作流控制门 (ConditionalGate)
 
-控制是否继续执行工作流的节点（主要搭配random选项）
+控制是否继续执行工作流的节点（主要搭配random选项）（可选）
 
 ### 3. 文本连接器 (TextConcatenate)
 
