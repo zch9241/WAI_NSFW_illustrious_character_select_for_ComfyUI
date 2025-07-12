@@ -35,16 +35,16 @@ try:
     character_names = list(characters.keys())
     
     # 随机
-    action_names_with_random = ["random"] + action_names
-    character_names_with_random = ["random"] + character_names
+    action_names_ = ["skip", "random"] + action_names
+    character_names_ = ["skip", "random"] + character_names
 
 
 except Exception as e:
     print(f"[WAI_NSFW_illustrious_character_select_for_ComfyUI] Error loading data: {e}")
     character_names =["Error loading data"]
     action_names = ["Error loading data"]
-    character_names_with_random = ["random", "Error loading data"]
-    action_names_with_random = ["random", "Error loading data"]
+    character_names_ = ["skip", "random", "Error loading data"]
+    action_names_ = ["skip", "random", "Error loading data"]
 
 
 class PromptAndLoraLoader:
@@ -63,8 +63,8 @@ class PromptAndLoraLoader:
                 "model": ("MODEL", ),
                 "clip": ("CLIP", ),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
-                "character": (character_names_with_random, ),
-                "action": (action_names_with_random, ),
+                "character": (character_names_, ),
+                "action": (action_names_, ),
                 "workflow_control": ("BOOLEAN", {"default": False, "label_on": "使用当前配置生成（工作流将继续运行）", "label_off": "预览随机选项（工作流将在工作流控制门节点被终止）"}),
                 "add_nsfw": ("BOOLEAN", {"default": True}),
                 "add_details": ("BOOLEAN", {"default": True}),
