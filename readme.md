@@ -65,6 +65,18 @@
 
 ## 注意事项
 
+*   本扩展已经将角色名转成简体中文了，若有繁中需求，请按以下方式修改
+
+```python
+# custom_nodes/WAI_NSFW_illustrious_character_select_for_ComfyUI/__init__.py
+
+# 加载配置文件
+try:
+    settings = utils.get_config('settings.json')
+    actions = utils.get_config('action.json')    # 动作名-提示词
+    characters = utils.get_config('zh_CN.json')   # 角色名-提示词   <----将zh_CN.json改成zh_TW.json即可
+```
+
 *   本扩展已经预设了 `WAI-NSFW-illustrious-SDXL v14.0` 模型作者推荐的默认正向和反向提示词，无需手动添加
 *   本扩展暂时没有实现原扩展中的 AI 补充提示词的功能。
 *   **警告** : 原作者声明的 LoRA 依赖 `ChihunHentai_20230709225610-000004.safetensors`(基于SD 1.5)，可能并非与模型 `WAI-NSFW-illustrious-SDXL` 兼容，在执行时控制台会输出错误信息

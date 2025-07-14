@@ -19,7 +19,7 @@ from . import utils
 try:
     settings = utils.get_config('settings.json')
     actions = utils.get_config('action.json')    # 动作名-提示词
-    characters = utils.get_config('zh_TW.json')   # 角色名-提示词
+    characters = utils.get_config('zh_CN.json')   # 角色名-提示词
     
     # 动作名
     action_names = list(actions.keys())
