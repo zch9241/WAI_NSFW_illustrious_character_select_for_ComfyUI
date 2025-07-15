@@ -2,25 +2,65 @@
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.type = "text/css";
-    link.href = "extensions/WAI_NSFW_illustrious_character_select_for_ComfyUI/style.css";	// 这个路径确实有点奇怪，写成style.css就不行
+	// ComfyUI 的服务器会将 /extensions/ URL 路径映射到 WEB_DIRECTORY 所定义的目录
+    link.href = "extensions/WAI_NSFW_illustrious_character_select_for_ComfyUI/style.css";
     document.head.appendChild(link);
 })();
+
 
 import { app } from "../../../scripts/app.js";
 import { ComfyWidgets } from "../../../scripts/widgets.js";
 
+const fetch_data = async (url) => {
+	try {
+		const response = await fetch(url);
+		if (!response.ok) {
+			throw new Error(`API call failed: ${response.statusText}`);
+		}
+		const data = await response.json();
+		return data;
+	} catch (error) {
+		console.error("Failed to load json:", error);
+	}
+}
 app.registerExtension({
 	name: "Comfy.WAICharSelect.Util",
+	async setup(app) {
+		// 加载配置文件
+		this.characterImages = await fetch_data(`/wai-char-select/get-char-image`);    // Array
+		this.characterData = await fetch_data(`/wai-char-select/get-char-data`);    // Object
+	},
 
 	async beforeRegisterNodeDef(nodeType, nodeData, app) {
+		const extension = this;
 		if (nodeData.name === "PromptAndLoraLoader") {
 			const onNodeCreated = nodeType.prototype.onNodeCreated;
 			nodeType.prototype.onNodeCreated = function () {
 				onNodeCreated?.apply(this, arguments);
 
+				const imageWidget = this.addCustomWidget({
+					name: "image_display",
+					type: "custom_image",
+					y: 0,
+					image: null,
+					draw: function(ctx, node, width, y) {
+						if (!this.image || !this.image.complete) return;
+						const x = (node.size[0] - this.image.naturalWidth) / 2;
+						ctx.drawImage(this.image, x, y, this.image.naturalWidth, this.image.naturalHeight);
+					},
+					computeSize: function(width) {
+						if (this.image && this.image.naturalHeight > 0) {
+							return [width, this.image.naturalHeight + 10];
+						}
+						return [width, 0];
+					}
+				})
+				this.imageWidget = imageWidget;
+
 				const characterWidget = this.widgets.find(w => w.name === "character");
 				const actionWidget = this.widgets.find(w => w.name === "action");
 
+				// 回调函数
 				// 如果不是随机模式，把seed相关控件设置为不可见
 				const handleModeChange = (value, canvas, node, pos, event) => {
 					const seedWidget = this.widgets.find(w => w.name === "seed");
@@ -37,8 +77,49 @@ app.registerExtension({
 
 					canvas?.draw(true, true);
 				}
-				characterWidget.callback = handleModeChange;
+				const handleCharacterChange = async (value, canvas, node, pos, event) => {
+					const imageWidget = this.imageWidget;
+
+					// 如果选择 skip 或 random，则清除图像并恢复节点尺寸
+					if (value === "skip" || value === "random") {
+						if (imageWidget.image) {
+							imageWidget.image = null;
+							this.setDirtyCanvas(true, true);
+						}
+						return;
+					}
+					// 正常选人的情况（非random或skip）
+					const characterEng = extension.characterData[value];
+					if (!characterEng) {
+						console.log(`No data found for character: ${value}. Skipping.`);
+						return;
+					}
+
+					const characterImageObj = extension.characterImages.find(imgObj => imgObj.hasOwnProperty(characterEng));
+					if (!characterImageObj) {
+						console.log(`No image found for character: ${value} (${characterEng}). Skipping.`);
+						return;
+					}
+					const base64Data = characterImageObj[characterEng];
+
+					const img = new Image();
+					
+					img.onload = () => {
+						imageWidget.image = img;
+						node.setDirtyCanvas(true, true);
+					};
+					img.src = base64Data;
+				}
+
+				const mainCallback = async (value, canvas, node, pos, event) => {
+					handleModeChange(value, canvas, node, pos, event);
+					await handleCharacterChange(value, canvas, node, pos, event);
+				}
+
+				characterWidget.callback = mainCallback;
 				actionWidget.callback = handleModeChange;
+
+				extension.mainCallback = mainCallback;
 
 				// 初始化
 				handleModeChange("random", app.canvas, this);
@@ -60,57 +141,11 @@ app.registerExtension({
 
 					if (characterWidget && characterWidget.value === "random") {
 						characterWidget.value = message.selected_character[0];
+						extension.mainCallback(characterWidget.value, app.canvas, this);
 					}
 					if (actionWidget && actionWidget.value === "random") {
 						actionWidget.value = message.selected_action[0];
 					}
-				}
-				// 图片处理
-				this.imgs = []; 
-				if (message.images) {
-					for (const imgData of message.images) {
-						const img = new Image();
-						img.src = app.api.apiURL(
-							`/view?filename=${encodeURIComponent(
-								imgData.filename
-							)}&type=${imgData.type}&subfolder=${encodeURIComponent(
-								imgData.subfolder
-							)}&t=${+new Date()}`
-						);
-						this.imgs.push(img);
-					}
-				}
-
-				let widgetsWereChanged = false;
-				// 文本处理
-				if (message.text && message.text.length > 0) {
-					widgetsWereChanged = true;
-					const text = message.text[0];
-
-					// 若原本有文本框控件，无需创建
-					let stringWidget = this.widgets.find(w => w.name === "text_char_act_info")
-					if (!stringWidget) {
-						stringWidget = ComfyWidgets["STRING"](this, "text_char_act_info", ["STRING", { multiline: true }], app).widget;
-						stringWidget.inputEl.readOnly = true;
-						stringWidget.inputEl.style.opacity = 0.6;
-						stringWidget.inputEl.classList.add("wai_char_select_textarea");
-						}
-					stringWidget.value = text;
-					}
-				// 重绘
-				if (widgetsWereChanged || message.images) {
-					this.setDirtyCanvas(true, true);
-					requestAnimationFrame(() => {
-						const sz = this.computeSize();
-						if (sz[0] < this.size[0]) {
-							sz[0] = this.size[0];
-						}
-						if (sz[1] < this.size[1]) {
-							sz[1] = this.size[1];
-						}
-						this.onResize?.(sz);
-						app.graph.setDirtyCanvas(true, false);
-					});
 				}
 			}
 		}

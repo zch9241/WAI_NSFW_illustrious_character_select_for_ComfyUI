@@ -74,7 +74,7 @@
 try:
     settings = utils.get_config('settings.json')
     actions = utils.get_config('action.json')    # 动作名-提示词
-    characters = utils.get_config('zh_CN.json')   # 角色名-提示词   <----将zh_CN.json改成zh_TW.json即可
+    characters = utils.get_config('zh_CN.json')   # 角色名-提示词   <==将zh_CN.json改成zh_TW.json即可
 ```
 
 *   本扩展已经预设了 `WAI-NSFW-illustrious-SDXL v14.0` 模型作者推荐的默认正向和反向提示词，无需手动添加

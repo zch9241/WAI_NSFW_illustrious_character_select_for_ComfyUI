@@ -1,16 +1,19 @@
 # Author: zch9241[zch2426936965@gmail.com]
 # 
 
+import json
 import os
 import random
 import time
 
+from aiohttp import web
 import numpy as np
 from PIL import Image
 
 
 import folder_paths
 from nodes import LoraLoader
+from server import PromptServer
 
 from . import utils
 
@@ -45,6 +48,24 @@ except Exception as e:
     action_names = ["Error loading data"]
     character_names_ = ["skip", "random", "Error loading data"]
     action_names_ = ["skip", "random", "Error loading data"]
+
+# 为前端创建查询接口
+@PromptServer.instance.routes.get("/wai-char-select/get-char-image")
+async def get_char_image_handler(request):
+    try:
+        return web.json_response(character_images)
+    except FileNotFoundError:
+        return web.Response(status=404, text="Source file not found")
+    except Exception as e:
+        return web.Response(status=500, text=f"Error reading source file: {e}")
+@PromptServer.instance.routes.get("/wai-char-select/get-char-data")
+async def get_char_data_handler(request):
+    try:
+        return web.json_response(characters)
+    except FileNotFoundError:
+        return web.Response(status=404, text="Source file not found")
+    except Exception as e:
+        return web.Response(status=500, text=f"Error reading source file: {e}")
 
 
 class PromptAndLoraLoader:
@@ -182,31 +203,9 @@ class PromptAndLoraLoader:
         else:
             final_neg_conditioning = neg_conditioning
         
-        # 在节点内显示选择的角色图像
-        if selected_character in character_names:
-            character_prompt = characters[selected_character]
-            for character_image in character_images:
-                if list(character_image.keys()) == [character_prompt]:
-                    character_image_data = character_image[character_prompt]
-                    break
-            pil_image = utils.base64_to_pil(character_image_data)
-        else:
-            print(f"[PromptAndLoraLoader] No image found for character: {selected_character}. Returning a black image.")
-            pil_image = Image.new('RGB', (64, 64), 'black')
-
-        file_prefix = f"character_{time.time()}_{np.random.randint(1000)}"
-        file_path = os.path.join(self.output_dir, f"{file_prefix}.png")
-        pil_image.save(file_path, "PNG")
-        
-        return_image = [{
-            "filename": os.path.basename(file_path),
-            "subfolder": "",
-            "type": self.type
-        }]
         text = [f"角色: {selected_character}\n动作: {selected_action}"]
         
         ui_payload = {
-            "images": return_image, 
             "text": text,
             "selected_character": [selected_character],
             "selected_action": [selected_action],
