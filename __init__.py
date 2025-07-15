@@ -274,7 +274,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConditionalGate": "(WAI)工作流控制门",
     "TextConcatenate": "文本连接器",
 }
-WEB_DIRECTORY = "./web"
+WEB_DIRECTORY = "./web" # ComfyUI 的服务器会将 /extensions/ URL 路径映射到 WEB_DIRECTORY 所定义的目录
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
 
 print("[WAI_NSFW_illustrious_character_select_for_ComfyUI] Node loaded successfully.")

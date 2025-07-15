@@ -1,15 +1,4 @@
-(function() {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.type = "text/css";
-	// ComfyUI 的服务器会将 /extensions/ URL 路径映射到 WEB_DIRECTORY 所定义的目录
-    link.href = "extensions/WAI_NSFW_illustrious_character_select_for_ComfyUI/style.css";
-    document.head.appendChild(link);
-})();
-
-
 import { app } from "../../../scripts/app.js";
-import { ComfyWidgets } from "../../../scripts/widgets.js";
 
 const fetch_data = async (url) => {
 	try {
@@ -128,11 +117,6 @@ app.registerExtension({
 			const onExecuted = nodeType.prototype.onExecuted;
 			nodeType.prototype.onExecuted = function (message) {
 				onExecuted?.apply(this, arguments);
-				
-				if (!this.canvas_widget_class) {
-					this.canvas_widget_class = "prompt-and-lora-loader-node";
-					this.setDirtyCanvas(true, false); // 强制重绘以应用类名
-				}
 
 				// 记忆存在random选项时的cha/act数据，修改相应控件，以便重新运行工作流时使用
 				if (message.selected_character && message.selected_action) {
