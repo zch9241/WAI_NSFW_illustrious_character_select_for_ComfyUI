@@ -65,7 +65,7 @@
 
 ## 注意事项
 
-*   本扩展已经将角色名转成简体中文了，若有繁中需求，请按以下方式修改
+*   本扩展已经将角色名转成简体中文了，若需要原来的语言，请按如下方式修改：
 
 ```python
 # custom_nodes/WAI_NSFW_illustrious_character_select_for_ComfyUI/__init__.py
@@ -73,13 +73,15 @@
 # 加载配置文件
 try:
     settings = utils.get_config('settings.json')
-    actions = utils.get_config('action.json')    # 动作名-提示词
+    actions = utils.get_config('action_zh_CN.json')    # 动作名-提示词   <==将action_zh_CN.json改成action.json即可
     characters = utils.get_config('zh_CN.json')   # 角色名-提示词   <==将zh_CN.json改成zh_TW.json即可
 ```
 
 *   本扩展已经预设了 `WAI-NSFW-illustrious-SDXL v14.0` 模型作者推荐的默认正向和反向提示词，无需手动添加
 *   本扩展暂时没有实现原扩展中的 AI 补充提示词的功能。
-*   **警告** : 原作者声明的 LoRA 依赖 `ChihunHentai_20230709225610-000004.safetensors`(基于SD 1.5)，可能并非与模型 `WAI-NSFW-illustrious-SDXL` 兼容，在执行时控制台会输出错误信息
+*   **警告** :
+    1. 原作者声明的 LoRA 依赖 `ChihunHentai_20230709225610-000004.safetensors`(基于SD 1.5)，可能并非与模型 `WAI-NSFW-illustrious-SDXL` 兼容，在执行时控制台会输出错误信息
+    2. 在原作者的 `action.json` 中发现了包含lora的提示词，可能无法被工作流正确加载
 
 ## 推荐工作流
 
@@ -87,4 +89,4 @@ try:
 
 ## 致谢
 
-本项目中的所有配置文件（角色、动作和提示词预设）均来自 [@lanner0403](https://github.com/lanner0403/) 的原项目 [WAI-NSFW-illustrious-character-select](https://github.com/lanner0403/WAI-NSFW-illustrious-character-select)。没有他（们）的工作，这个节点项目就不可能实现。
+本项目中的部分配置文件（角色、动作和提示词预设）来自 [@lanner0403](https://github.com/lanner0403/) 的项目 [WAI-NSFW-illustrious-character-select](https://github.com/lanner0403/WAI-NSFW-illustrious-character-select)。没有他（们）的工作，这个节点项目就不可能实现。

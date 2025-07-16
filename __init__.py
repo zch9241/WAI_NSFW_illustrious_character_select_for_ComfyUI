@@ -1,14 +1,9 @@
 # Author: zch9241[zch2426936965@gmail.com]
 # 
 
-import json
-import os
 import random
-import time
 
 from aiohttp import web
-import numpy as np
-from PIL import Image
 
 
 import folder_paths
@@ -21,7 +16,7 @@ from . import utils
 # 加载配置文件
 try:
     settings = utils.get_config('settings.json')
-    actions = utils.get_config('action.json')    # 动作名-提示词
+    actions = utils.get_config('action_zh_CN.json')    # 动作名-提示词
     characters = utils.get_config('zh_CN.json')   # 角色名-提示词
     
     # 动作名
