@@ -95,7 +95,6 @@ try:
 *   本扩展暂时没有实现原扩展中的 AI 补充提示词的功能。
 *   **警告** :
     1. 原作者声明的 LoRA 依赖 `ChihunHentai_20230709225610-000004.safetensors`(基于SD 1.5)，可能并非与模型 `WAI-NSFW-illustrious-SDXL` 兼容，在执行时控制台会输出错误信息
-    2. 在原作者的 `action.json` 中发现了包含lora的提示词，可能无法被工作流正确加载
 
 ## 推荐工作流
 
