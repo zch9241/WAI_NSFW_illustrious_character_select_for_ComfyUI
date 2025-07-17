@@ -164,8 +164,8 @@ class PromptAndLoraLoader:
 
         neg_prompt = settings["neg_prompt"]
         
-        print(f"[WAICharSelect] Positive Prompt: {pos_prompt}\n")
-        print(f"[WAICharSelect] Negative Prompt: {neg_prompt}\n")
+        print(f"[WAICharSelect] Added Positive Prompt: {pos_prompt}\n")
+        print(f"[WAICharSelect] Added Negative Prompt: {neg_prompt}\n")
         
         # 动态加载lora
         lora_loader = LoraLoader()
