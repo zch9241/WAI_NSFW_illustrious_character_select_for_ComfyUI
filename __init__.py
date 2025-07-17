@@ -2,6 +2,7 @@
 # 
 
 import random
+import re
 
 from aiohttp import web
 
@@ -62,6 +63,22 @@ async def get_char_data_handler(request):
     except Exception as e:
         return web.Response(status=500, text=f"Error reading source file: {e}")
 
+
+def custom_lora_loader(lora_loader, model, clip, lora_name, weight):
+    '''
+    对lora_loader的高级封装
+    '''
+    incompatible_loras = ["cuminass-000015", "reverse suspended congress_Redim", "RSCongress", "pov_strangling", "phpose-000011r", "hairholdingblowjob", "add_detail", "torogao_v3-000010", "symmetrical docking orgy"]
+    if not lora_name.strip('.safetensors') in incompatible_loras:
+        try:
+            model, clip = lora_loader.load_lora(model, clip, lora_name, weight, weight)
+            print(f"[WAICharSelect] Loaded {lora_name.strip('.safetensors')} lora with weight: {weight}")
+        except FileNotFoundError as e:
+            print(f"\033[93m[WAICharSelect]\033[0m lora {lora_name} does not exist, skipping.")
+    else:
+        print(f"\033[93m[WAICharSelect]\033[0m lora {lora_name} may be incompatible with current model, skipping.")
+    
+    return model, clip
 
 class PromptAndLoraLoader:
     """
@@ -124,39 +141,10 @@ class PromptAndLoraLoader:
 
         is_random = character == "random" or action == "random"
         if is_random:
-            print(f"[PromptAndLoraLoader] Seed: {seed}, Selected Character: {selected_character}, Selected Action: {selected_action}")
+            print(f"[WAICharSelect] Seed: {seed}, Selected Character: {selected_character}, Selected Action: {selected_action}")
         else:
-            print(f"[PromptAndLoraLoader] Selected Character: {selected_character}, Selected Action: {selected_action}")
+            print(f"[WAICharSelect] Selected Character: {selected_character}, Selected Action: {selected_action}")
 
-        # 动态加载lora
-        lora_loader = LoraLoader()
-        
-        if add_details:
-            lora_name = "add-detail-xl.safetensors"
-            model, clip = lora_loader.load_lora(
-                model, clip, lora_name, add_details_lora_weight, add_details_lora_weight
-            )
-            print(f"[PromptAndLoraLoader] Loaded {lora_name.strip('.safetensors')} lora with weight: {add_details_lora_weight}")
-        if enhance_body:
-            lora_name = "ChihunHentai_20230709225610-000004.safetensors"
-            model, clip = lora_loader.load_lora(
-                model, clip, lora_name, enhance_body_lora_weight, enhance_body_lora_weight
-            )
-            print(f"[PromptAndLoraLoader] Loaded {lora_name.strip('.safetensors')} lora with weight: {enhance_body_lora_weight}")
-        if enhance_quality:
-            lora_name = "spo_sdxl_10ep_4k-data_lora_webui.safetensors"
-            model, clip = lora_loader.load_lora(
-                model, clip, lora_name, enhance_quality_lora_weight, enhance_quality_lora_weight
-            )
-            print(f"[PromptAndLoraLoader] Loaded {lora_name.strip('.safetensors')} lora with weight: {enhance_quality_lora_weight}")
-        if enhance_character:
-            lora_name = "ponyv4_noob1_2_adamW-000017.safetensors"
-            model, clip = lora_loader.load_lora(
-                model, clip, lora_name, enhance_character_lora_weight, enhance_character_lora_weight
-            )
-            print(f"[PromptAndLoraLoader] Loaded {lora_name.strip('.safetensors')} lora with weight: {enhance_character_lora_weight}")
-        
-        
         # 构建提示词
         pos_prompt_parts = []
         
@@ -176,9 +164,41 @@ class PromptAndLoraLoader:
 
         neg_prompt = settings["neg_prompt"]
         
-        print(f"[PromptAndLoraLoader] Positive Prompt: {pos_prompt}\n")
-        print(f"[PromptAndLoraLoader] Negative Prompt: {neg_prompt}\n")
+        print(f"[WAICharSelect] Positive Prompt: {pos_prompt}\n")
+        print(f"[WAICharSelect] Negative Prompt: {neg_prompt}\n")
+        
+        # 动态加载lora
+        lora_loader = LoraLoader()
 
+        if add_details:
+            lora_name = "add-detail-xl.safetensors"
+            model, clip = custom_lora_loader(lora_loader, model, clip, lora_name, add_details_lora_weight)
+        if enhance_body:
+            lora_name = "ChihunHentai_20230709225610-000004.safetensors"
+            model, clip = custom_lora_loader(lora_loader, model, clip, lora_name, enhance_body_lora_weight)
+        if enhance_quality:
+            lora_name = "spo_sdxl_10ep_4k-data_lora_webui.safetensors"
+            model, clip = custom_lora_loader(lora_loader, model, clip, lora_name, enhance_quality_lora_weight)
+        if enhance_character:
+            lora_name = "ponyv4_noob1_2_adamW-000017.safetensors"
+            model, clip = custom_lora_loader(lora_loader, model, clip, lora_name, enhance_character_lora_weight)
+        
+        # 提取提示词中的lora
+        pattern = r"<lora:(.*?):([\d.]+)>"
+        matches = re.findall(pattern, actions[selected_action])
+        lora_list = []
+        if matches:
+            for match in matches:
+                loraname = match[0]
+                weight = float(match[1])
+                lora_list.append({"name": loraname, "weight": weight})
+            for lora_conf in lora_list:
+                model, clip = custom_lora_loader(lora_loader, model, clip, lora_conf["name"]+".safetensors", lora_conf["weight"])
+            # 删除原调用
+            pos_prompt = re.sub(pattern, "", pos_prompt)
+            pos_prompt = re.sub(r'\s{2,}', ' ', pos_prompt).strip()
+
+        
         # 解析
         pos_tokens = clip.tokenize(pos_prompt)
         pos_cond, pos_pooled = clip.encode_from_tokens(pos_tokens, return_pooled=True)
@@ -187,7 +207,6 @@ class PromptAndLoraLoader:
         neg_cond, neg_pooled = clip.encode_from_tokens(neg_tokens, return_pooled=True)
         neg_conditioning = [[neg_cond, {"pooled_output": neg_pooled}]]
 
-        
         # 如果有上游的 conditioning，合并它们
         if positive_conditioning_in is not None:
             final_pos_conditioning = positive_conditioning_in + pos_conditioning
@@ -229,9 +248,9 @@ class ConditionalGate:
 
     def gate(self, gate_input, positive_conditioning, negative_conditioning):
         if not gate_input:
-            print("\033[93m[WAI ConditionalGate] 门已关闭。工作流在此处被有意终止。这不是一个错误。\033[0m")
+            print("\033[93m[WAICharSelect] 门已关闭。工作流在此处被有意终止。这不是一个错误。\033[0m")
             raise Exception("工作流已由'(WAI)流程控制门'终止。")
-        print("\033[92m[WAI ConditionalGate] 门已打开。工作流继续执行。\033[0m")
+        print("\033[92m[WAICharSelect] 门已打开。工作流继续执行。\033[0m")
         return (positive_conditioning, negative_conditioning)
 
 
@@ -272,4 +291,4 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 WEB_DIRECTORY = "./web" # ComfyUI 的服务器会将 /extensions/ URL 路径映射到 WEB_DIRECTORY 所定义的目录
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
 
-print("[WAI_NSFW_illustrious_character_select_for_ComfyUI] Node loaded successfully.")
+print("[WAICharSelect] Node loaded successfully.")

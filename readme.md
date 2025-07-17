@@ -10,6 +10,8 @@
 
 通过 `绘世启动器` 或 `ComfyUI Manager` 安装即可。
 
+相关VAE和LoRA依赖位于[Lora Requirements.md](/Lora%20Requirements.md)中
+
 ## 节️点详解
 
 在 ComfyUI 的节点菜单中，你可以在 `WAI Character Selector` 分类下找到以下节点：
