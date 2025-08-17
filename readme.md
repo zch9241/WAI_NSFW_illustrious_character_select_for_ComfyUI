@@ -54,8 +54,8 @@
 
 *   `model`: 加载了所选 LoRA 的模型。
 *   `clip`: 加载了所选 LoRA 的 CLIP 模型。
-*   `positive_cond`: 最终的正面 conditioning，可直接连接到 KSampler。
-*   `negative_cond`: 最终的负面 conditioning，可直接连接到 KSampler。
+*   `positive_cond`: 正面 conditioning，可直接连接到 KSampler。
+*   `negative_cond`: 负面 conditioning，可直接连接到 KSampler。
 
 ### 2. (WAI)工作流控制门 (ConditionalGate)
 
