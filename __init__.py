@@ -184,21 +184,21 @@ class PromptAndLoraLoader:
             model, clip = custom_lora_loader(lora_loader, model, clip, lora_name, enhance_character_lora_weight)
         
         # 提取提示词中的lora
-        pattern = r"<lora:(.*?):([\d.]+)>"
-        matches = re.findall(pattern, actions[selected_action])
-        lora_list = []
-        if matches:
-            for match in matches:
-                loraname = match[0]
-                weight = float(match[1])
-                lora_list.append({"name": loraname, "weight": weight})
-            for lora_conf in lora_list:
-                model, clip = custom_lora_loader(lora_loader, model, clip, lora_conf["name"]+".safetensors", lora_conf["weight"])
-            # 删除原调用
-            pos_prompt = re.sub(pattern, "", pos_prompt)
-            pos_prompt = re.sub(r'\s{2,}', ' ', pos_prompt).strip()
+        if selected_action != "skip":
+            pattern = r"<lora:(.*?):([\d.]+)>"
+            matches = re.findall(pattern, actions[selected_action])
+            lora_list = []
+            if matches:
+                for match in matches:
+                    loraname = match[0]
+                    weight = float(match[1])
+                    lora_list.append({"name": loraname, "weight": weight})
+                for lora_conf in lora_list:
+                    model, clip = custom_lora_loader(lora_loader, model, clip, lora_conf["name"]+".safetensors", lora_conf["weight"])
+                # 删除原调用
+                pos_prompt = re.sub(pattern, "", pos_prompt)
+                pos_prompt = re.sub(r'\s{2,}', ' ', pos_prompt).strip()
 
-        
         # 解析
         pos_tokens = clip.tokenize(pos_prompt)
         pos_cond, pos_pooled = clip.encode_from_tokens(pos_tokens, return_pooled=True)
