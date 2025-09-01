@@ -91,7 +91,7 @@ try:
     characters = utils.get_config('zh_CN.json')   # 角色名-提示词   <==将zh_CN.json改成zh_TW.json即可
 ```
 
-*   本扩展已经预设了 `WAI-NSFW-illustrious-SDXL v14.0` 模型作者推荐的默认正向和反向提示词，无需手动添加
+*   本扩展已经预设了 `WAI-NSFW-illustrious-SDXL v15.0` 模型作者推荐的默认正向和反向提示词，无需手动添加
 *   本扩展暂时没有且暂时不计划实现原扩展中的 AI 补充提示词的功能。
 *   **警告** :原作者及提示词中声明的部分 lora 与当前的 WAI 模型版本并不适配，若强行加载会在控制台输出错误信息，但并不影响工作流执行
 
