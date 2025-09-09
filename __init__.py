@@ -115,8 +115,8 @@ class PromptAndLoraLoader:
             }
         }
 
-    RETURN_TYPES = ("MODEL", "CLIP", "CONDITIONING", "CONDITIONING", "BOOLEAN")
-    RETURN_NAMES = ("model", "clip", "positive_conditioning", "negative_conditioning", "gate_passthrough")
+    RETURN_TYPES = ("MODEL", "CLIP", "CONDITIONING", "CONDITIONING", "BOOLEAN", "STRING", "STRING")
+    RETURN_NAMES = ("model", "clip", "positive_conditioning", "negative_conditioning", "gate_passthrough", "positive_prompt", "negative_prompt")
     FUNCTION = "build_workflow"
     CATEGORY = "WAI Character Selector"
     OUTPUT_NODE = True
@@ -227,7 +227,7 @@ class PromptAndLoraLoader:
         # False = 暂停, True = 继续
         gate_passthrough = workflow_control
         
-        return {"ui": ui_payload, "result": (model, clip, final_pos_conditioning, final_neg_conditioning, gate_passthrough)}
+        return {"ui": ui_payload, "result": (model, clip, final_pos_conditioning, final_neg_conditioning, gate_passthrough, pos_prompt, neg_prompt)}
 
 
 class ConditionalGate:
