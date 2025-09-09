@@ -56,12 +56,14 @@
 *   `clip`: 加载了所选 LoRA 的 CLIP 模型。
 *   `positive_cond`: 正面 conditioning，可直接连接到 KSampler。
 *   `negative_cond`: 负面 conditioning，可直接连接到 KSampler。
+*   `positive_prompt`: 正面提示词文本。
+*   `negative_prompt`: 负面提示词文本。
 
 ### 2. (WAI)工作流控制门 (ConditionalGate)
 
-控制是否继续执行工作流的节点（主要搭配random选项）
+控制是否继续执行工作流的节点（主要搭配random选项）。
 
-若上游选择停止工作流，此节点会抛出异常以终止工作流（并非扩展出现错误）
+若上游选择停止工作流，此节点会抛出异常以终止工作流（并非扩展出现错误）。
 
 ### 3. 文本连接器 (TextConcatenate)
 
