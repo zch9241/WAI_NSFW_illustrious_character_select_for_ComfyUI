@@ -32,12 +32,12 @@ app.registerExtension({
 					type: "custom_image",
 					y: 0,
 					image: null,
-					draw: function(ctx, node, width, y) {
+					draw: function (ctx, node, width, y) {
 						if (!this.image || !this.image.complete) return;
 						const x = (node.size[0] - this.image.naturalWidth) / 2;
 						ctx.drawImage(this.image, x, y, this.image.naturalWidth, this.image.naturalHeight);
 					},
-					computeSize: function(width) {
+					computeSize: function (width) {
 						if (this.image && this.image.naturalHeight > 0) {
 							return [width, this.image.naturalHeight + 10];
 						}
@@ -92,7 +92,7 @@ app.registerExtension({
 					const base64Data = characterImageObj[characterEng];
 
 					const img = new Image();
-					
+
 					img.onload = () => {
 						imageWidget.image = img;
 						node.setDirtyCanvas(true, true);
@@ -112,6 +112,119 @@ app.registerExtension({
 
 				// 初始化
 				handleModeChange("random", app.canvas, this);
+
+				// -----------------------------------------------------------
+				// Helper: Create and setup slider
+				// -----------------------------------------------------------
+				const createSlider = (name, label, dropdownWidget, items) => {
+					// Add slider widget
+					// NOTE: We use addWidget which appends to end, then we move it.
+					const slider = this.addWidget("slider", name, 0, function (value, canvas, node, pos, event) {
+						const index = Math.round(value);
+						if (index >= 0 && index < items.length) {
+							const itemName = items[index];
+							if (dropdownWidget.value !== itemName) {
+								dropdownWidget.value = itemName;
+								if (dropdownWidget.callback) {
+									dropdownWidget.callback(itemName, canvas, node, pos, event);
+								}
+							}
+						}
+					}, {
+						min: 0,
+						max: items.length - 1,
+						step: 1,
+						precision: 0
+					});
+					return slider;
+				};
+
+				// -----------------------------------------------------------
+				// 1. Character Slider
+				// -----------------------------------------------------------
+				const characterNames = Object.keys(extension.characterData);
+
+				if (characterNames.length > 0) {
+					// Check if slider already exists (to avoid duplicate on reload if any?) 
+					// Actually onNodeCreated runs once per node instance.
+					const charSlider = createSlider("character_index", "Character Index", characterWidget, characterNames);
+
+					// Update existing mainCallback to also sync the slider when dropdown changes
+					const prevCharCallback = characterWidget.callback;
+					characterWidget.callback = async function (value, canvas, node, pos, event) {
+						if (prevCharCallback) await prevCharCallback(value, canvas, node, pos, event);
+						const index = characterNames.indexOf(value);
+						if (index !== -1 && charSlider) {
+							charSlider.value = index;
+						}
+					};
+
+					// Position after 'character' widget
+					const charIdx = this.widgets.findIndex(w => w.name === "character");
+					if (charIdx !== -1 && charSlider) {
+						const sliderIdx = this.widgets.indexOf(charSlider);
+						this.widgets.splice(sliderIdx, 1);
+						this.widgets.splice(charIdx + 1, 0, charSlider);
+					}
+				}
+
+				// -----------------------------------------------------------
+				// 2. Action Slider
+				// -----------------------------------------------------------
+				if (actionWidget && actionWidget.options && actionWidget.options.values) {
+					const actionNames = actionWidget.options.values;
+					const actSlider = createSlider("action_index", "Action Index", actionWidget, actionNames);
+
+					// Sync Slider when Dropdown changes
+					const prevActCallback = actionWidget.callback;
+					actionWidget.callback = function (value, canvas, node, pos, event) {
+						if (prevActCallback) prevActCallback(value, canvas, node, pos, event);
+						const index = actionNames.indexOf(value);
+						if (index !== -1 && actSlider) {
+							actSlider.value = index;
+						}
+					};
+
+					// Position after 'action' widget
+					// NOTE: We must find indices again because splicing changed them
+					const actIdx = this.widgets.findIndex(w => w.name === "action");
+					if (actIdx !== -1 && actSlider) {
+						const sliderIdx = this.widgets.indexOf(actSlider);
+						this.widgets.splice(sliderIdx, 1);
+						this.widgets.splice(actIdx + 1, 0, actSlider);
+					}
+				}
+
+				// -----------------------------------------------------------
+				// 3. Serialization Fix (Exclude sliders)
+				// -----------------------------------------------------------
+				const onSerialize = this.onSerialize;
+				this.onSerialize = function (o) {
+					if (onSerialize) onSerialize.apply(this, arguments);
+
+					// Helper to remove widget value by name from widgets_values array
+					// We must map widget names to their CURRENT index in existing widgets array
+					if (o.widgets_values) {
+						// Identify indices of our sliders
+						const indicesToRemove = [];
+						const sliders = ["character_index", "action_index"];
+
+						this.widgets.forEach((w, i) => {
+							if (sliders.includes(w.name)) {
+								indicesToRemove.push(i);
+							}
+						});
+
+						// Sort descending to remove from end without affecting earlier indices
+						indicesToRemove.sort((a, b) => b - a);
+
+						indicesToRemove.forEach(idx => {
+							if (o.widgets_values.length > idx) {
+								o.widgets_values.splice(idx, 1);
+							}
+						});
+					}
+				};
 			}
 
 			const onExecuted = nodeType.prototype.onExecuted;
