@@ -117,9 +117,15 @@ app.registerExtension({
 				// Helper: Create and setup slider
 				// -----------------------------------------------------------
 				const createSlider = (name, label, dropdownWidget, items) => {
+					if (!items || items.length === 0) return null;
 					// Add slider widget
 					// NOTE: We use addWidget which appends to end, then we move it.
-					const slider = this.addWidget("slider", name, 0, function (value, canvas, node, pos, event) {
+					// Sync initial value with dropdown
+					let initialIndex = items.indexOf(dropdownWidget.value);
+					if (initialIndex === -1) initialIndex = 0;
+
+					// Use label for display, name for internal identification
+					const slider = this.addWidget("slider", label, initialIndex, function (value, canvas, node, pos, event) {
 						const index = Math.round(value);
 						if (index >= 0 && index < items.length) {
 							const itemName = items[index];
@@ -136,13 +142,18 @@ app.registerExtension({
 						step: 1,
 						precision: 0
 					});
+					slider.widgetName = name;
 					return slider;
 				};
 
 				// -----------------------------------------------------------
 				// 1. Character Slider
 				// -----------------------------------------------------------
-				const characterNames = Object.keys(extension.characterData);
+				// Use widget options to ensure alignment with dropdown (order, special items like random/skip)
+				// Fallback to characterData keys if widget options are missing
+				const characterNames = (characterWidget && characterWidget.options && characterWidget.options.values)
+					? characterWidget.options.values
+					: Object.keys(extension.characterData);
 
 				if (characterNames.length > 0) {
 					// Check if slider already exists (to avoid duplicate on reload if any?) 
@@ -159,13 +170,21 @@ app.registerExtension({
 						}
 					};
 
+
 					// Position after 'character' widget
-					const charIdx = this.widgets.findIndex(w => w.name === "character");
-					if (charIdx !== -1 && charSlider) {
-						const sliderIdx = this.widgets.indexOf(charSlider);
-						this.widgets.splice(sliderIdx, 1);
-						this.widgets.splice(charIdx + 1, 0, charSlider);
-					}
+					// Defer strictly to ensure data loading uses original order (fix misalignment)
+					setTimeout(() => {
+						const charIdx = this.widgets.findIndex(w => w.name === "character");
+						if (charIdx !== -1 && charSlider) {
+							const sliderIdx = this.widgets.indexOf(charSlider);
+							// Only move if not already in place (though unlikely with setTimeout)
+							if (sliderIdx !== charIdx + 1) {
+								this.widgets.splice(sliderIdx, 1);
+								this.widgets.splice(charIdx + 1, 0, charSlider);
+								this.onResize?.(this.size);
+							}
+						}
+					}, 0);
 				}
 
 				// -----------------------------------------------------------
@@ -185,14 +204,21 @@ app.registerExtension({
 						}
 					};
 
+
 					// Position after 'action' widget
-					// NOTE: We must find indices again because splicing changed them
-					const actIdx = this.widgets.findIndex(w => w.name === "action");
-					if (actIdx !== -1 && actSlider) {
-						const sliderIdx = this.widgets.indexOf(actSlider);
-						this.widgets.splice(sliderIdx, 1);
-						this.widgets.splice(actIdx + 1, 0, actSlider);
-					}
+					// Defer strictly to ensure data loading uses original order
+					setTimeout(() => {
+						// NOTE: We must find indices again because splicing of charSlider might have changed them
+						const actIdx = this.widgets.findIndex(w => w.name === "action");
+						if (actIdx !== -1 && actSlider) {
+							const sliderIdx = this.widgets.indexOf(actSlider);
+							if (sliderIdx !== actIdx + 1) {
+								this.widgets.splice(sliderIdx, 1);
+								this.widgets.splice(actIdx + 1, 0, actSlider);
+								this.onResize?.(this.size);
+							}
+						}
+					}, 0);
 				}
 
 				// -----------------------------------------------------------
@@ -210,7 +236,11 @@ app.registerExtension({
 						const sliders = ["character_index", "action_index"];
 
 						this.widgets.forEach((w, i) => {
-							if (sliders.includes(w.name)) {
+							// Check both name (standard) and any attached internal name property
+							// Since we overwrite this.name in the callback context above on creation (which might be too late?), 
+							// actually we need to set it on the return object or pass it.
+							// Wait, addWidget returns the widget object. Let's set it there.
+							if (sliders.includes(w.name) || (w.widgetName && sliders.includes(w.widgetName))) {
 								indicesToRemove.push(i);
 							}
 						});
@@ -225,6 +255,43 @@ app.registerExtension({
 						});
 					}
 				};
+
+				// -----------------------------------------------------------
+				// 4. Startup Synchronization
+				// -----------------------------------------------------------
+				// Defer execution to ensure node configuration is complete (data loaded)
+				setTimeout(() => {
+					// Re-find widgets to ensure correct references
+					const charWidget = this.widgets.find(w => w.name === "character");
+					const actWidget = this.widgets.find(w => w.name === "action");
+					// Find sliders by their custom widgetName property (set in createSlider)
+					const charSlider = this.widgets.find(w => w.widgetName === "character_index");
+					const actSlider = this.widgets.find(w => w.widgetName === "action_index");
+
+					// Sync Character Slider
+					if (charWidget && charSlider) {
+						const val = charWidget.value;
+						const opts = charWidget.options ? charWidget.options.values : [];
+						let idx = opts.indexOf(val);
+						if (idx === -1) idx = 0;
+						charSlider.value = idx;
+
+						// Trigger main callback to load image and update UI state (e.g. hide/show seed)
+						// extension.mainCallback is defined above
+						if (extension.mainCallback) {
+							extension.mainCallback(val, app.canvas, this, null, null);
+						}
+					}
+
+					// Sync Action Slider
+					if (actWidget && actSlider) {
+						const val = actWidget.value;
+						const opts = actWidget.options ? actWidget.options.values : [];
+						let idx = opts.indexOf(val);
+						if (idx === -1) idx = 0;
+						actSlider.value = idx;
+					}
+				}, 100); // Small delay to ensuring restoring is fully done
 			}
 
 			const onExecuted = nodeType.prototype.onExecuted;
